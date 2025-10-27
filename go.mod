@@ -1,4 +1,4 @@
-module github.com/Trendyol/kafka-konsumer/v2
+module github.com/abdollahpour/kafka-konsumer/v2
 
 go 1.19
 
