@@ -117,7 +117,7 @@ func (cfg *ConsumerConfig) String() string {
 	return modifiedString
 }
 
-func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
+func (cfg *ConsumerConfig) newCronsumerConfig(logger LoggerInterface) *kcronsumer.Config {
 	cronsumerCfg := kcronsumer.Config{
 		MetricPrefix: cfg.RetryConfiguration.MetricPrefix,
 		ClientID:     cfg.RetryConfiguration.ClientID,
@@ -157,17 +157,46 @@ func (cfg *ConsumerConfig) newCronsumerConfig() *kcronsumer.Config {
 		}
 	}
 
+	// Use RetryConfiguration SASL if available, otherwise fall back to main SASL
+	var sasl *SASLConfig
 	if !cfg.RetryConfiguration.SASL.IsEmpty() {
-		cronsumerCfg.SASL.Enabled = true
-		cronsumerCfg.SASL.AuthType = string(cfg.RetryConfiguration.SASL.Type)
-		cronsumerCfg.SASL.Username = cfg.RetryConfiguration.SASL.Username
-		cronsumerCfg.SASL.Password = cfg.RetryConfiguration.SASL.Password
-		cronsumerCfg.SASL.Rack = cfg.RetryConfiguration.Rack
+		sasl = cfg.RetryConfiguration.SASL
+	} else {
+		if logger != nil {
+			logger.Info("RetryConfiguration.SASL is not set, falling back to main SASL configuration")
+		}
+		sasl = cfg.SASL
 	}
 
+	if sasl != nil && !sasl.IsEmpty() {
+		cronsumerCfg.SASL.Enabled = true
+		cronsumerCfg.SASL.AuthType = string(sasl.Type)
+		cronsumerCfg.SASL.Username = sasl.Username
+		cronsumerCfg.SASL.Password = sasl.Password
+
+		// Use RetryConfiguration Rack if available, otherwise fall back to main Rack
+		if cfg.RetryConfiguration.Rack != "" {
+			cronsumerCfg.SASL.Rack = cfg.RetryConfiguration.Rack
+		} else if cfg.Rack != "" {
+			logger.Info("RetryConfiguration.Rack is not set, falling back to main Rack configuration")
+			cronsumerCfg.SASL.Rack = cfg.Rack
+		}
+	}
+
+	// Use RetryConfiguration TLS if available, otherwise fall back to main TLS
+	var tls *TLSConfig
 	if !cfg.RetryConfiguration.TLS.IsEmpty() {
-		cronsumerCfg.SASL.RootCAPath = cfg.RetryConfiguration.TLS.RootCAPath
-		cronsumerCfg.SASL.IntermediateCAPath = cfg.RetryConfiguration.TLS.IntermediateCAPath
+		tls = cfg.RetryConfiguration.TLS
+	} else {
+		if logger != nil {
+			logger.Info("RetryConfiguration.TLS is not set, falling back to main TLS configuration")
+		}
+		tls = cfg.TLS
+	}
+
+	if tls != nil && !tls.IsEmpty() {
+		cronsumerCfg.SASL.RootCAPath = tls.RootCAPath
+		cronsumerCfg.SASL.IntermediateCAPath = tls.IntermediateCAPath
 	}
 
 	return &cronsumerCfg

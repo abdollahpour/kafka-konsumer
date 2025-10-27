@@ -171,7 +171,7 @@ func verifyTopicOnStartup(cfg *ConsumerConfig, logger LoggerInterface) error {
 func (c *base) setupCronsumer(cfg *ConsumerConfig, retryFn func(kcronsumer.Message) error) {
 	c.logger.Debug("Initializing Cronsumer")
 	c.retryTopic = cfg.RetryConfiguration.Topic
-	c.cronsumer = cronsumer.New(cfg.newCronsumerConfig(), retryFn)
+	c.cronsumer = cronsumer.New(cfg.newCronsumerConfig(c.logger), retryFn)
 	c.subprocesses.Add(c.cronsumer)
 }
 
